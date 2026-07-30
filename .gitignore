@@ -42,3 +42,9 @@ notebooks/*.nbconvert.ipynb
 
 # Tarayıcı otomasyonu artıkları
 .playwright-mcp/
+
+# Video üretim hattının ara ürünleri: seslendirme (wav), ham klipler (webm),
+# hizalanmış parçalar, yakalanan komut çıktıları — toplamda yüzlerce MB.
+# Nihai mp4 / srt / gif dosyaları docs/ altında ve git'e GİRER; bu klasör
+# `uv run python scripts/make_video.py` ile yeniden üretilir.
+build/

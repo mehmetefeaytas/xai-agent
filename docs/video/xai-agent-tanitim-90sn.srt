@@ -1,0 +1,35 @@
+1
+00:00:00,000 --> 00:00:10,812
+Bir kredi başvurusu reddedildiğinde gerekçe hakkı vardır. Ama bir dil modeline «bu kararı açıkla» derseniz, ikna edici ve yanlış bir gerekçe üretir.
+
+2
+00:00:10,812 --> 00:00:13,369
+XAI-Agent bunu üç katmanla çözüyor.
+
+3
+00:00:13,369 --> 00:00:24,503
+LightGBM kararı verir. SHAP, kararı özelliklere ayrıştırır — ve bu ayrıştırma modelin çıktısını tam olarak yeniden kurar; sapma kayan nokta
+
+4
+00:00:24,503 --> 00:00:25,944
+hassasiyeti kadar.
+
+5
+00:00:25,944 --> 00:00:36,954
+Üçüncü katman, yerelde çalışan bir ajan. SHAP çıktısını dört araç üzerinden okuyup Türkçe anlatıya çeviriyor. Solda anlatı, sağda aynı kararın
+
+6
+00:00:36,954 --> 00:00:37,807
+matematiği.
+
+7
+00:00:37,807 --> 00:00:48,240
+Ve dördüncü katman: denetçi. Burada ajan hiç araç çağırmadan cevap verdi; karar eşiğini yanlış söyledi ve olmayan bir «faiz oranı» özelliği icat etti.
+
+8
+00:00:48,240 --> 00:00:54,918
+Denetçi beş temelsiz sayıyı yakalayıp gerekçeleriyle modele geri verdi ve yanıt yeniden yazıldı.
+
+9
+00:00:54,918 --> 00:01:02,937
+Ölçümler, adalet denetimi ve bilinen sınırlar depoda açık. Ayrıntılı anlatım için uzun videoya bakabilirsiniz.

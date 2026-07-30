@@ -1,0 +1,331 @@
+1
+00:00:00,000 --> 00:00:10,416
+Merhaba. Bu, XAI-Agent adlı projenin ayrıntılı anlatımı. Amacı tek cümleyle şu: bir kredi başvurusunun neden reddedildiğini, makine öğrenmesi
+
+2
+00:00:10,416 --> 00:00:21,053
+modelinin gerçek matematiğine sadık kalarak, sıradan bir insanın anlayacağı Türkçeyle anlatmak. Üç katmandan oluşuyor ve üstlerinde dördüncü bir
+
+3
+00:00:21,053 --> 00:00:27,037
+katman var: anlatılanların doğruluğunu programatik olarak denetleyen bir denetçi.
+
+4
+00:00:27,037 --> 00:00:38,000
+Problem şu: bir kredi başvurusu reddedildiğinde, başvuru sahibinin gerekçe hakkı var. Ama modele bakıp «bunu açıkla» demek yetmez, çünkü dil modelleri
+
+5
+00:00:38,000 --> 00:00:48,963
+ikna edici ama yanlış gerekçeler üretmekte çok iyidir. Bu projenin kurucu ilkesi şudur: kararı model verir, gerekçeyi SHAP hesaplar, dili ajan kurar —
+
+6
+00:00:48,963 --> 00:00:54,883
+ve ajanın kurduğu her cümle, SHAP'ın sayılarına karşı otomatik olarak denetlenir.
+
+7
+00:00:54,883 --> 00:01:05,566
+Veri seti UCI German Credit: bin başvuru, yirmi özellik, sekiz yüz eğitim ve iki yüz test satırı. Bu veri setinin özel bir yanı var — kendi maliyet
+
+8
+00:01:05,566 --> 00:01:16,395
+matrisiyle geliyor. Riskli bir müşteriyi onaylamak, iyi bir müşteriyi reddetmekten beş kat pahalı sayılıyor. Cinsiyet bilgisi taşıyan medeni durum ve
+
+9
+00:01:16,395 --> 00:01:25,843
+yabancı işçi alanlarını modelden çıkardım; yaşı bilinçli olarak bıraktım, çünkü sonra adalet denetiminde bunun bedelini ölçeceğiz.
+
+10
+00:01:25,843 --> 00:01:35,574
+Birinci katman: LightGBM. Eğitimi canlı çalıştırıyorum. Kategorik değişkenleri one-hot'a açmıyorum — LightGBM'in kendi kategorik desteğini
+
+11
+00:01:35,574 --> 00:01:46,150
+kullanıyorum. Bunun tek sebebi hız değil: one-hot açarsanız bir özelliğin SHAP değeri onlarca parçaya bölünür ve «vadesiz hesap durumu kararı şu kadar
+
+12
+00:01:46,150 --> 00:01:56,163
+etkiledi» diyemezsiniz. Model iki yüz kırk üç ağaçta duruyor ve bu sayı tek bir doğrulama kümesinde değil, beş katın ortalamasında belirlendi.
+
+13
+00:01:56,163 --> 00:02:06,978
+Neden beş kat? Çünkü bin satırlık bir veri setinde tek bir skora güvenilemez. Bakın: katlar arasındaki fark yüzde on. Dördüncü kat yetmiş bir, ikinci
+
+14
+00:02:06,978 --> 00:02:17,721
+kat seksen iki veriyor. İlk sürümde tek bir doğrulama kümesi kullanmıştım ve model otuz ağaçta durup yetersiz öğrenmişti. Çapraz doğrulamaya geçince
+
+15
+00:02:17,721 --> 00:02:23,164
+hem model düzeldi hem de test skorunun şans eseri olmadığını gösterebildim.
+
+16
+00:02:23,164 --> 00:02:34,059
+Ve burada projenin en dürüst grafiği var. Lojistik regresyon, sıralama gücünde LightGBM'i geçiyor: sıfır virgül sekiz bir'e karşı sıfır virgül yedi
+
+17
+00:02:34,059 --> 00:02:44,880
+dokuz. Bunu saklamıyorum, çünkü saklamak mühendislik değil pazarlama olur. LightGBM'i seçmemin sebebi başka: maliyette yüz dörde karşı yüz on beş,
+
+18
+00:02:44,880 --> 00:02:51,699
+duyarlılıkta doksan ikiye karşı seksen sekiz. Yani riskli başvuruların daha azını kaçırıyor.
+
+19
+00:02:51,699 --> 00:03:02,430
+Şimdi çoğu projenin atladığı yer: karar eşiği. Varsayılan sıfır virgül beş, yanlış kabulün yanlış retten beş kat pahalı olduğu bir dünyada yanlış bir
+
+20
+00:03:02,430 --> 00:03:13,233
+seçim. Maliyeti en küçük yapan eşik sıfır virgül yirmi altı. Teorik Bayes eşiği altıda bir, yani sıfır virgül on yedi; ampirik sonuç ona yakın. Kritik
+
+21
+00:03:13,233 --> 00:03:23,820
+ayrıntı: eşiği yalnızca eğitim setinin kat-dışı tahminlerinde seçtim. Test setine eşik ayarlamak için asla dokunulmadı — gri eğri sadece doğrulama.
+
+22
+00:03:23,820 --> 00:03:34,903
+Bunun somut karşılığı bu iki tablo. Varsayılan eşikle isabet daha yüksek görünüyor: yüzde yetmiş iki. Ama on altı riskli başvuru onaylanıyor. Seçtiğim
+
+23
+00:03:34,903 --> 00:03:45,690
+eşikle isabet yüzde elli sekize düşüyor, buna karşılık kaçan riskli sayısı beşe iniyor ve toplam maliyet yüz yirmiden yüz dörde geriliyor. İşte bu
+
+24
+00:03:45,690 --> 00:03:53,373
+yüzden bu projede isabet oranı bir başarı ölçüsü olarak hiç kullanılmıyor — asimetrik maliyeti gizliyor.
+
+25
+00:03:53,373 --> 00:04:04,366
+İkinci katman: SHAP. Terminalde ilk iki katmanı birlikte görüyoruz. Karar, risk oranı, eşiğe uzaklık — sonra gerekçe. Riski artıran ve azaltan
+
+26
+00:04:04,366 --> 00:04:15,204
+etkenler, her birinin toplam etkideki payıyla. SHAP değerlerini LightGBM'in kendi ağaç tabanlı uygulamasından alıyorum, ayrıca bağımsız SHAP
+
+27
+00:04:15,204 --> 00:04:20,933
+kütüphanesiyle karşılaştırdım: iki hesap arasındaki fark tam olarak sıfır.
+
+28
+00:04:20,933 --> 00:04:31,571
+Aynı açıklamanın görsel hali. Bu başvuru kıl payı onaylandı: risk yüzde yirmi beş virgül dokuz, eşik yüzde yirmi altı. Yeşiller riski azaltıyor,
+
+29
+00:04:31,571 --> 00:04:42,282
+kırmızılar artırıyor. Dikkat edin: kredi geçmişinde «başka bankada devam eden kredi var» kaydı riski azaltıyor. Sezgiye aykırı ama veriye uygun —
+
+30
+00:04:42,282 --> 00:04:49,817
+ödeme geçmişi kanıtlanmış müşteri daha güvenli. Model bunu veriden öğrendi, ben kural olarak yazmadım.
+
+31
+00:04:49,817 --> 00:05:00,463
+Bu grafik projenin matematiksel omurgası. SHAP'ın yerel isabet aksiyomu şunu şart koşar: taban değer artı bütün katkıların toplamı, modelin çıktısına
+
+32
+00:05:00,463 --> 00:05:11,038
+eşit olmak zorunda. İki yüz test başvurusunun hepsinde ölçtüm; en büyük sapma on üzeri eksi on beş mertebesinde. Bu bir yaklaşım hatası değil, kayan
+
+33
+00:05:11,038 --> 00:05:20,612
+nokta aritmetiğinin sınırı. Yani açıklama, modelin yanında duran ikinci bir tahmin değil — modelin kendi kararının ayrıştırılmış hali.
+
+34
+00:05:20,612 --> 00:05:31,351
+Şimdi kritik tasarım kararı: SHAP ile ajan arasındaki köprü. Ajana giden yükte tek bir ham log-odds sayısı yok. Sadece kopyalanmaya hazır dizeler var:
+
+35
+00:05:31,351 --> 00:05:42,018
+etki payı yüzde on dört nokta sıfır, etki yönü riski artırıyor, başvuru sahibi değiştirebilir mi hayır. Sebebi acı bir tecrübe: ilk sürümde ham katkı
+
+36
+00:05:42,018 --> 00:05:52,399
+değerini gören model sıfır virgül seksen üçü «yüzde seksen üç risk» diye okudu. Modelin yorumlayabileceği hiçbir sayı bırakmayınca bu hata sınıfı
+
+37
+00:05:52,399 --> 00:05:54,045
+tamamen ortadan kalktı.
+
+38
+00:05:54,045 --> 00:06:05,151
+Üçüncü katman ajan. Microsoft Agent Framework üzerinde, yerelde çalışan yedi milyar parametreli bir modelle. Ajanın modele erişimi yalnızca dört araç
+
+39
+00:06:05,151 --> 00:06:15,959
+üzerinden: kararı ve gerekçesini getiren araç, senaryo denemesi yapan araç, bir özelliğin ne olduğunu açıklayan araç ve modelin genel davranışını
+
+40
+00:06:15,959 --> 00:06:24,531
+veren araç. Senaryo aracı önemli: tahmini uydurmuyor, modeli değiştirilmiş girdiyle gerçekten yeniden çalıştırıyor.
+
+41
+00:06:24,531 --> 00:06:34,824
+Şimdi canlı arayüz. Kıl payı onaylanan başvuruyu seçiyorum ve denetimli modda açıklama üretiyorum. Şu anda yerel model araçları çağırıyor, SHAP
+
+42
+00:06:34,824 --> 00:06:45,477
+çıktısını alıyor ve metni kuruyor. Bu tam olarak yerelde çalıştığı için sürüyor — hiçbir bulut servisine veri gitmiyor. Solda ajanın anlatısı, sağda
+
+43
+00:06:45,477 --> 00:06:55,410
+aynı kararın SHAP şelalesi. Altta gördüğünüz satır önemli: denetçi kaç sayının temellendiğini sayıyor ve onarım devreye girdiyse söylüyor.
+
+44
+00:06:55,410 --> 00:07:06,344
+Şimdi projenin can alıcı noktası: denetimi kapatıp ajanın ham çıktısına bakalım. Ekrandaki gerçek bir başarısızlık. Ajan hiç araç çağırmadı — tool
+
+45
+00:07:06,344 --> 00:07:17,354
+çağrıları YOK yazıyor. Risk oranını doğru söylemiş, yüzde yirmi beş virgül dokuz. Ama karar eşiğini yüzde otuz diye vermiş; gerçek eşik yüzde yirmi
+
+46
+00:07:17,354 --> 00:07:28,288
+altı. Hesap bakiyesini yüz elli mark diye uydurmuş. Kredi türü diye anlamsız bir kelime yazmış: andreavonbalken. Ve en fenası, faiz oranı diye bir
+
+47
+00:07:28,288 --> 00:07:39,222
+özellik icat etmiş — bu veri setinde faiz oranı diye bir alan yok. Biçim kusursuz, içerik uydurma. Denetçi beş temelsiz sayıyı yakaladı: otuz, yüz
+
+48
+00:07:39,222 --> 00:07:42,218
+elli, yedi virgül iki, beş virgül sekiz.
+
+49
+00:07:42,218 --> 00:07:52,361
+Burada denetçinin kendi sınırını da göstermek isterim. Uydurma sayıların hepsini yakaladı, çünkü sayı denetimi genel bir kural: yükte olmayan her
+
+50
+00:07:52,361 --> 00:08:02,644
+rakam ihlaldir. Ama faiz oranı ve andreavonbalken terimleri yakalanmadı, çünkü uydurma kavram listesi elle yazılmış sınırlı bir liste. Yani asıl iş
+
+51
+00:08:02,644 --> 00:08:12,717
+gücü sayı denetimi; terim denetimi yardımcı. Bunu saklamak yerine söylüyorum, çünkü bir denetçinin neyi yakalamadığını bilmek, neyi yakaladığını
+
+52
+00:08:12,717 --> 00:08:14,116
+bilmek kadar önemli.
+
+53
+00:08:14,116 --> 00:08:24,856
+Şimdi aynı soru, denetim açık. Ekranda üç şey değişti. Bir: ajan aracı çağırdı. İki: onarım devreye girdi ve üç ihlal sıfıra indi. Üç: eşik artık
+
+54
+00:08:24,856 --> 00:08:35,893
+doğru, yüzde yirmi altı; hesap bakiyesi artık gerçek etiketiyle, sıfır ile iki yüz mark arası. On bir sayının tamamı SHAP çıktısıyla temellendirildi.
+
+55
+00:08:35,893 --> 00:08:45,448
+Buradaki fark bir prompt iyileştirmesi değil: denetçi bağımsız bir program ve ajanın kendi hakkındaki iddialarına hiç güvenmiyor.
+
+56
+00:08:45,448 --> 00:08:56,084
+Ama dikkat: denetimden geçmek, doğru olmak demek değil. Aynı yanıtın son cümlesine bakın: «başvurunun riski oldukça yüksektir» diyor. Oysa bu başvuru
+
+57
+00:08:56,084 --> 00:09:06,719
+onaylandı ve karar netliği kıl payı. Cümle yanlış, ama denetimi geçti — çünkü içinde temelsiz bir sayı yok. Denetçinin kapsamı sayısal sadakat; nitel
+
+58
+00:09:06,719 --> 00:09:17,212
+iddiaların tutarlılığı değil. Bu, ölçtüğünüz şeyin sınırını bilmenin bir örneği: «sadakat denetimi geçti» güçlü bir garanti ama her şeyin garantisi
+
+59
+00:09:17,212 --> 00:09:17,641
+değil.
+
+60
+00:09:17,641 --> 00:09:28,601
+Denetçi yedi ihlal türü arıyor. En sık yakalananı temelsiz sayı: yükte olmayan bir rakamın metinde geçmesi. Şimdi dürüst kısım: onarım döngüsü tek
+
+61
+00:09:28,601 --> 00:09:39,487
+soruda çok güçlü, ana açıklamada beş ihlalden sıfıra iniyor. Ama on beş yanıtın tamamına bakınca kazanç mütevazı, otuz yediden otuz ikiye. Sebep,
+
+62
+00:09:39,487 --> 00:09:49,997
+örneklemin çoğunun takip sorusu olması. Ajan takip turunda oturum geçmişine güvenip araç çağırmıyor. Bu, prompt ile değil mimari bir kısıtla
+
+63
+00:09:49,997 --> 00:09:52,174
+çözülecek, bilinen bir sınır.
+
+64
+00:09:52,174 --> 00:10:02,403
+Peki SHAP'ın kendisi modele sadık mı? Bunu matematiğine güvenerek değil, davranışsal olarak ölçtüm. SHAP'ın en önemli dediği özellikleri referans
+
+65
+00:10:02,403 --> 00:10:12,844
+değerine çekip modeli yeniden çalıştırıyorum. Tahmin gerçekten düşüyorsa sıralama doğruydu. Kritik olan kontrol grubu: aynı sayıda rastgele özellik.
+
+66
+00:10:12,844 --> 00:10:23,003
+SHAP sıralaması rastgeleden iki virgül on altı kat daha etkili. Bu karşılaştırma olmadan sıfır virgül on üçün iyi mi kötü mü olduğu bilinemezdi.
+
+67
+00:10:23,003 --> 00:10:33,275
+Adalet denetimi. Cinsiyet ve yabancı işçi durumunu modelden çıkardım, yine de cinsiyette yüzde on virgül üçlük bir ret oranı farkı kalıyor. Yani
+
+68
+00:10:33,275 --> 00:10:43,618
+«bilmezlik yoluyla adalet» yetmiyor; diğer özellikler vekil görevi görüyor. Modelde bıraktığım yaş ise yüzde yirmi dokuz virgül sekizlik bir fark
+
+69
+00:10:43,618 --> 00:10:54,033
+üretiyor. Bir kısmı gerçek risk farkından geliyor ama tamamı değil. Bu model bu haliyle üretime uygun değil ve raporda böyle yazıyor. Kleinberg ve
+
+70
+00:10:54,033 --> 00:11:04,019
+arkadaşlarının gösterdiği gibi, bu ölçütleri aynı anda sağlamak matematiksel olarak imkânsız — hangisinin önemli olduğu bir politika kararı.
+
+71
+00:11:04,019 --> 00:11:14,935
+Karşı-olgusal senaryo sekmesi. Kredi vadesini değiştirip modeli yeniden çalıştırıyorum. Önceki risk, yeni risk ve en çok değişen katkılar. Burada
+
+72
+00:11:14,935 --> 00:11:26,153
+hiçbir tahmin yorumlanmıyor — LightGBM değiştirilmiş girdiyle baştan çalışıyor. Başvuru sahibinin değiştiremeyeceği özellikler ayrıca işaretli, çünkü
+
+73
+00:11:26,153 --> 00:11:29,766
+«yaşınızı büyütün» diye bir tavsiye anlamsızdır.
+
+74
+00:11:29,766 --> 00:11:40,502
+Kalite güvencesi. Yüz kırk sekiz test var ve önemli bir kısmı gerçek hatalardan doğdu. Denetçinin her yanlış pozitifi için bir regresyon testi yazdım:
+
+75
+00:11:40,502 --> 00:11:50,808
+ondalık sayıları bölen cümle ayırıcı, Türkçe büyük İ harfinin küçültülmesindeki tuzak, benzer özellik adlarını karıştıran bulanık eşleştirme. Bu
+
+76
+00:11:50,808 --> 00:12:01,544
+videoyu çekerken bir tane daha buldum: «anlamına gelir» cümlesindeki «gelir» fiilini, gelir kavramı sanıp uydurma sayıyordu. Ekranda sonda küçük bir x
+
+77
+00:12:01,544 --> 00:12:10,061
+ve «1 xfailed» yazıyor; o, ham turda araç çağrısının kararsız olduğunu belgeleyen bilinçli bir başarısızlık beklentisi.
+
+78
+00:12:10,061 --> 00:12:20,739
+Kapatmadan önce çözemediklerim. Birincisi: yerel yedi milyar parametreli model ham ilk turda aracı kararsız çağırıyor. Yani onarım döngüsü bir süs
+
+79
+00:12:20,739 --> 00:12:31,564
+değil, sistemin çalışması için zorunlu. İkincisi: takip soruları hâlâ güvenilmez. Üçüncüsü: çıktı çalıştırmadan çalıştırmaya oynuyor; bazı koşularda
+
+80
+00:12:31,564 --> 00:12:42,388
+özellik adlarını kendi kelimeleriyle yeniden yazıyor ve o etiketleri banka kayıtlarında bulamazsınız. Dördüncüsü: adalet denetimi bu modelin üretime
+
+81
+00:12:42,388 --> 00:12:52,921
+uygun olmadığını söylüyor. Bunları gizlemek yerine ölçüp yazdım — bir açıklanabilirlik projesinin kendisi hakkında dürüst olmaması tuhaf olurdu.
+
+82
+00:12:52,921 --> 00:13:04,045
+Özetle: kararı model veriyor, gerekçeyi SHAP hesaplıyor, dili ajan kuruyor ve ajanın her cümlesi programatik olarak denetleniyor. Kod, ölçümler ve bu
+
+83
+00:13:04,045 --> 00:13:08,823
+videonun üretim hattı depoda açık. İzlediğiniz için teşekkürler.

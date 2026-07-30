@@ -250,6 +250,53 @@ def test_feature_vocabulary_is_masked_before_fabrication_check(
     assert "gelir" in still_caught.fabricated_concepts
 
 
+def test_verb_idiom_gelir_is_not_a_fabricated_concept(sample_explanation) -> None:
+    """«…anlamına gelir» fiilini gelir (income) kavramı sanmamalı.
+
+    Türkçe'de "gelir" hem bir isim (income) hem "gelmek" fiilinin geniş zaman
+    çekimidir. Alt-dizi araması ikisini ayırt edemiyordu.
+
+    Bu yanlış pozitif, tanıtım videosunun çekimi sırasında gerçek bir ajan
+    yanıtında yakalandı; denetçi tek ihlal olarak bunu raporlamıştı.
+    """
+    audit = _audit(
+        "Risk oranı eşiğin altında, bu da riski daha düşük bir seviyeye "
+        "indirgeyen bir karar anlamına gelir.",
+        sample_explanation,
+    )
+    assert "gelir" not in audit.fabricated_concepts
+    assert audit.fabricated_contexts == []
+
+
+@pytest.mark.parametrize(
+    "sentence",
+    [
+        "Bu sonuç, başvurunun onaylandığı anlamına gelir.",
+        "Eşiğin altında kalmak olumlu bir sonuç manasına gelir.",
+        "Bu durum ortaya gelir gelmez karar yeniden hesaplanır.",
+    ],
+)
+def test_verb_idioms_do_not_trigger_fabrication(sample_explanation, sentence) -> None:
+    """Ölçülen deyim ailesinin tamamı alarm üretmemeli."""
+    assert "gelir" not in _audit(sentence, sample_explanation).fabricated_concepts
+
+
+def test_income_fabrication_still_caught_next_to_verb_idiom(
+    sample_explanation,
+) -> None:
+    """Deyim maskeleme, GERÇEK uydurmayı gizlemeye dönüşmemeli.
+
+    Aynı yanıtta hem deyim hem gerçek uydurma varsa ihlal yine raporlanmalı;
+    aksi hâlde düzeltme kolaylıkla bir kaçış yoluna dönüşür.
+    """
+    audit = _audit(
+        "Bu, kararın onaylandığı anlamına gelir. Ayrıca aylık geliriniz "
+        "yetersiz bulundu.",
+        sample_explanation,
+    )
+    assert "gelir" in audit.fabricated_concepts
+
+
 def test_detects_misframed_share(sample_explanation) -> None:
     """Etki payını risk artış miktarı gibi sunmak ihlaldir.
 

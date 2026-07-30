@@ -34,6 +34,7 @@ build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
+    "playwright>=1.61.0",
     "pytest>=9.1.1",
     "pytest-cov>=7.1.0",
     "ruff>=0.16.0",
@@ -53,6 +54,9 @@ filterwarnings = [
 line-length = 90
 target-version = "py312"
 src = ["src", "tests", "scripts", "app"]
+# build/ video hattının ara ürünlerini ve tek kullanımlık yardımcı scriptleri
+# tutuyor; git'e girmiyor, lint kapsamına da girmesin.
+extend-exclude = ["build"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B", "C4", "SIM"]
@@ -60,3 +64,6 @@ ignore = ["E501", "B905"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["SIM117"]
+# scripts/video/* modülleri birbirini sys.path üzerinden düz import ediyor
+# (paket değil, çalıştırılabilir hat); mutlak import zorunluluğu uygulanmaz.
+"scripts/video/*" = ["E402"]

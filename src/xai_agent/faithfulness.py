@@ -245,6 +245,21 @@ FABRICATED_CONCEPTS = (
     "vergi levhası",
 )
 
+#: Türkçe'de bazı kavram adları aynı zamanda çok sık kullanılan fiil
+#: çekimleridir. "…anlamına gelir" cümlesindeki "gelir", gelir (income)
+#: kavramı DEĞİLDİR — ama alt-dizi araması ikisini ayırt edemez.
+#:
+#: Kelime sınırıyla (\bgelir\b) aramak da çözüm değil: o zaman gerçek bir
+#: uydurma olan "geliriniz yetersiz" ifadesi kaçar. Bu yüzden aramadan önce
+#: yalnızca ÖLÇÜLMÜŞ fiil deyimlerini metinden düşürüyoruz.
+#:
+#: Bu yanlış pozitif, tanıtım videosunun çekimi sırasında gerçek bir ajan
+#: yanıtında yakalandı: "Risk oranı eşiğin altında, bu da riski daha düşük
+#: bir seviyeye indirgeyen bir karar anlamına gelir."
+_VERB_IDIOM_RE = re.compile(
+    r"(?:anlamina|manasina|haline|hale|ortaya|meydana|one|geri|ileri)\s+gel\w*"
+)
+
 #: İngilizce'ye kayma göstergeleri. Ürün Türkçe konuşan bir başvuru sahibine
 #: hitap ediyor; İngilizce bir yanıt teknik olarak "sadık" olsa bile
 #: kullanılamaz. Ölçümde gözlendi: onarım turundan sonra 7B model İngilizce'ye
@@ -495,6 +510,21 @@ def mask_known_vocabulary(
     return masked
 
 
+def _mask_for_concepts(
+    folded_text: str, explanation: DecisionExplanation
+) -> str:
+    """Uydurma kavram araması için metni iki aşamada temizler.
+
+    1. Modelin kendi sözlüğü (bkz. :func:`mask_known_vocabulary`)
+    2. Kavram adıyla çakışan Türkçe fiil deyimleri (bkz. ``_VERB_IDIOM_RE``)
+
+    İkisi de aynı sebeple var: denetçi yalnızca GERÇEK uydurmaları saymalı.
+    Yanlış alarm veren bir denetçi, onarım döngüsünde modele yanlış geri
+    bildirim verir ve doğru bir yanıtı bozar.
+    """
+    return _VERB_IDIOM_RE.sub(" ", mask_known_vocabulary(folded_text, explanation))
+
+
 def _extract_numbers(text: str) -> list[float]:
     """Metindeki tüm sayıları çıkarır."""
     out: list[float] = []
@@ -655,7 +685,7 @@ def audit_narrative(
             audit.ungrounded_numbers.append(num)
 
     # 2) Uydurulmuş kavramlar — modelin kendi sözlüğü maskelendikten SONRA
-    masked = mask_known_vocabulary(folded, explanation)
+    masked = _mask_for_concepts(folded, explanation)
     for concept in FABRICATED_CONCEPTS:
         folded_concept = _fold(concept)
         if folded_concept not in masked:
@@ -665,7 +695,7 @@ def audit_narrative(
         # yoksa ne teşhis edilebilir ne de ajana anlamlı düzeltme verilebilir.
         context = ""
         for sentence in _split_sentences(answer):
-            if folded_concept in mask_known_vocabulary(_fold(sentence), explanation):
+            if folded_concept in _mask_for_concepts(_fold(sentence), explanation):
                 context = sentence.strip()[:160]
                 break
         audit.fabricated_contexts.append(
