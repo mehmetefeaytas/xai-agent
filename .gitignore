@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Sanal ortam — uv.lock git'e GİRER, .venv GİRMEZ
+.venv/
+
+# Ortam değişkenleri (sırlar)
+.env
+
+# Veri ve modeller: yeniden üretilebilir olduğu için git'te tutulmaz.
+#   uv run python scripts/train.py
+# komutu bunların hepsini yeniden oluşturur.
+data/raw/*
+data/processed/*
+!data/**/.gitkeep
+models/*
+!models/.gitkeep
+
+# Üretilen çıktılar — raporlar git'te TUTULUR (jüri için kanıt),
+# grafikler tutulmaz.
+artifacts/*.png
+artifacts/*.svg
+
+# Jupyter
+.ipynb_checkpoints/
+notebooks/*.nbconvert.ipynb
+
+# İşletim sistemi / editör
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Tarayıcı otomasyonu artıkları
+.playwright-mcp/

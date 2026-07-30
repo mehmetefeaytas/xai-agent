@@ -1,0 +1,203 @@
+{
+  "n_test": 200,
+  "threshold": 0.26,
+  "excluded_from_model": [
+    "personal_status",
+    "foreign_worker"
+  ],
+  "method_note": "Korunan özellikler model girdisinden çıkarıldı ('fairness through unawareness'). Bu tek başına yetmez: aşağıdaki farklar, modelde kalan özellikler üzerinden VEKİL AYRIMCILIK olup olmadığını gösterir.",
+  "impossibility_note": "Demografik eşitlik, fırsat eşitliği ve öngörü eşitliğinin aynı anda sağlanması taban oranlar eşit değilse matematiksel olarak imkânsızdır (Kleinberg ve ark., 2016). Bu rapor geçti/kaldı damgası vermez; farkları ölçüp karar vericiye sunar.",
+  "summary": [
+    {
+      "attribute": "Medeni durum ve cinsiyet",
+      "in_model": false,
+      "demographic_parity_gap": 0.1027,
+      "demographic_parity_verdict": "DİKKAT — belirgin fark (10–20 puan), incelenmeli",
+      "equal_opportunity_gap": 0.0382,
+      "equal_opportunity_verdict": "ihmal edilebilir (<5 puan)"
+    },
+    {
+      "attribute": "Yabancı işçi durumu",
+      "in_model": false,
+      "demographic_parity_gap": null,
+      "demographic_parity_verdict": "hesaplanamadı (yetersiz grup verisi)",
+      "equal_opportunity_gap": null,
+      "equal_opportunity_verdict": "hesaplanamadı (yetersiz grup verisi)"
+    },
+    {
+      "attribute": "Yaş grubu",
+      "in_model": true,
+      "demographic_parity_gap": 0.2978,
+      "demographic_parity_verdict": "CİDDİ — büyük fark (>20 puan), model kullanılmamalı",
+      "equal_opportunity_gap": 0.1818,
+      "equal_opportunity_verdict": "DİKKAT — belirgin fark (10–20 puan), incelenmeli"
+    }
+  ],
+  "details": [
+    {
+      "attribute": "personal_status",
+      "display_name": "Medeni durum ve cinsiyet",
+      "in_model": false,
+      "groups": [
+        {
+          "group": "female div/dep/mar",
+          "label": "kadın (boşanmış / ayrı / evli)",
+          "n": 61,
+          "rejection_rate": 0.7213,
+          "actual_bad_rate": 0.3279,
+          "recall": 0.95,
+          "precision": 0.4318,
+          "mean_risk_score": 0.4627,
+          "reliable": true,
+          "note": ""
+        },
+        {
+          "group": "male div/sep",
+          "label": "erkek, boşanmış veya ayrı",
+          "n": 9,
+          "rejection_rate": 0.7778,
+          "actual_bad_rate": 0.3333,
+          "recall": 1.0,
+          "precision": 0.4286,
+          "mean_risk_score": 0.5509,
+          "reliable": false,
+          "note": "Grup 9 kişiden oluşuyor (<20); metrikler istatistiksel olarak güvenilmez."
+        },
+        {
+          "group": "male mar/wid",
+          "label": "erkek, evli veya dul",
+          "n": 12,
+          "rejection_rate": 0.8333,
+          "actual_bad_rate": 0.25,
+          "recall": 0.6667,
+          "precision": 0.2,
+          "mean_risk_score": 0.4294,
+          "reliable": false,
+          "note": "Grup 12 kişiden oluşuyor (<20); metrikler istatistiksel olarak güvenilmez."
+        },
+        {
+          "group": "male single",
+          "label": "erkek, bekâr",
+          "n": 118,
+          "rejection_rate": 0.6186,
+          "actual_bad_rate": 0.2881,
+          "recall": 0.9118,
+          "precision": 0.4247,
+          "mean_risk_score": 0.4111,
+          "reliable": true,
+          "note": ""
+        }
+      ],
+      "gaps": {
+        "demographic_parity_gap": 0.1026674076132259,
+        "equal_opportunity_gap": 0.038235294117647034,
+        "predictive_parity_gap": 0.007160647571606504,
+        "mean_score_gap": 0.051592351470779785,
+        "actual_bad_rate_gap": 0.039733259238677376
+      },
+      "n_reliable_groups": 2
+    },
+    {
+      "attribute": "foreign_worker",
+      "display_name": "Yabancı işçi durumu",
+      "in_model": false,
+      "groups": [
+        {
+          "group": "no",
+          "label": "hayır",
+          "n": 6,
+          "rejection_rate": 0.6667,
+          "actual_bad_rate": 0.1667,
+          "recall": 1.0,
+          "precision": 0.25,
+          "mean_risk_score": 0.3674,
+          "reliable": false,
+          "note": "Grup 6 kişiden oluşuyor (<20); metrikler istatistiksel olarak güvenilmez."
+        },
+        {
+          "group": "yes",
+          "label": "evet",
+          "n": 194,
+          "rejection_rate": 0.6701,
+          "actual_bad_rate": 0.3041,
+          "recall": 0.9153,
+          "precision": 0.4154,
+          "mean_risk_score": 0.4363,
+          "reliable": true,
+          "note": ""
+        }
+      ],
+      "gaps": {
+        "demographic_parity_gap": null,
+        "equal_opportunity_gap": null,
+        "predictive_parity_gap": null,
+        "mean_score_gap": null,
+        "actual_bad_rate_gap": null
+      },
+      "n_reliable_groups": 1
+    },
+    {
+      "attribute": "age",
+      "display_name": "Yaş grubu",
+      "in_model": true,
+      "groups": [
+        {
+          "group": "19-30",
+          "label": "19-30",
+          "n": 83,
+          "rejection_rate": 0.8072,
+          "actual_bad_rate": 0.4217,
+          "recall": 0.9143,
+          "precision": 0.4776,
+          "mean_risk_score": 0.5131,
+          "reliable": true,
+          "note": ""
+        },
+        {
+          "group": "31-40",
+          "label": "31-40",
+          "n": 53,
+          "rejection_rate": 0.5094,
+          "actual_bad_rate": 0.2264,
+          "recall": 1.0,
+          "precision": 0.4444,
+          "mean_risk_score": 0.3511,
+          "reliable": true,
+          "note": ""
+        },
+        {
+          "group": "41-55",
+          "label": "41-55",
+          "n": 44,
+          "rejection_rate": 0.6136,
+          "actual_bad_rate": 0.25,
+          "recall": 0.8182,
+          "precision": 0.3333,
+          "mean_risk_score": 0.3947,
+          "reliable": true,
+          "note": ""
+        },
+        {
+          "group": "56+",
+          "label": "56+",
+          "n": 20,
+          "rejection_rate": 0.65,
+          "actual_bad_rate": 0.1,
+          "recall": 1.0,
+          "precision": 0.1538,
+          "mean_risk_score": 0.4145,
+          "reliable": true,
+          "note": ""
+        }
+      ],
+      "gaps": {
+        "demographic_parity_gap": 0.2977949533984997,
+        "equal_opportunity_gap": 0.18181818181818177,
+        "predictive_parity_gap": 0.3237657864523536,
+        "mean_score_gap": 0.16204491936344517,
+        "actual_bad_rate_gap": 0.32168674698795185
+      },
+      "n_reliable_groups": 4
+    }
+  ]
+}

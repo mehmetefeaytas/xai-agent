@@ -1,0 +1,62 @@
+[project]
+name = "xai-agent"
+version = "0.1.0"
+description = "SHAP tabanli seffaf kredi risk aciklama ajani (LightGBM + SHAP + LLM)"
+readme = "README.md"
+authors = [
+    { name = "Mehmet Efe Aytaş", email = "mehmetefeaytas@icloud.com" }
+]
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "agent-framework-core>=1.12.1",
+    "agent-framework-foundry-local>=1.0.0b260721",
+    "agent-framework-ollama>=1.0.0b260721",
+    "agent-framework-openai>=1.11.0",
+    "joblib>=1.5.3",
+    "lightgbm>=4.5",
+    "llvmlite>=0.43",
+    "matplotlib>=3.11.1",
+    "numba>=0.60",
+    "numpy>=1.26,<3",
+    "openai>=1.50",
+    "pandas>=2.2",
+    "pydantic>=2.8",
+    "pydantic-settings>=2.14.2",
+    "python-dotenv>=1.2.2",
+    "scikit-learn>=1.5",
+    "shap>=0.46",
+    "streamlit>=1.38",
+]
+
+[build-system]
+requires = ["uv_build>=0.11.21,<0.12.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.16.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+markers = [
+    "llm: LLM arka ucu gerektiren testler (yavas; Ollama kapaliysa atlanir)",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning:lightgbm.*",
+]
+
+[tool.ruff]
+line-length = 90
+target-version = "py312"
+src = ["src", "tests", "scripts", "app"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "C4", "SIM"]
+ignore = ["E501", "B905"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["SIM117"]

@@ -1,0 +1,170 @@
+{
+  "n_samples": 800,
+  "base_value_logodds": -0.436535,
+  "base_value_probability": 0.392567,
+  "metric": "mean(|SHAP|) — log-odds cinsinden",
+  "features": [
+    {
+      "feature": "checking_status",
+      "display_name": "Vadesiz hesap durumu",
+      "mean_abs_shap": 0.617946,
+      "mean_signed_shap": 0.000323,
+      "percent": 19.567,
+      "rank": 1,
+      "direction_bias": "ortalamada riski artırıyor"
+    },
+    {
+      "feature": "duration",
+      "display_name": "Kredi vadesi",
+      "mean_abs_shap": 0.42173,
+      "mean_signed_shap": -0.000528,
+      "percent": 13.354,
+      "rank": 2,
+      "direction_bias": "ortalamada riski azaltıyor"
+    },
+    {
+      "feature": "purpose",
+      "display_name": "Kredi kullanım amacı",
+      "mean_abs_shap": 0.317137,
+      "mean_signed_shap": -0.00079,
+      "percent": 10.042,
+      "rank": 3,
+      "direction_bias": "ortalamada riski azaltıyor"
+    },
+    {
+      "feature": "credit_history",
+      "display_name": "Kredi geçmişi",
+      "mean_abs_shap": 0.296633,
+      "mean_signed_shap": -0.019544,
+      "percent": 9.393,
+      "rank": 4,
+      "direction_bias": "ortalamada riski azaltıyor"
+    },
+    {
+      "feature": "credit_amount",
+      "display_name": "Kredi tutarı",
+      "mean_abs_shap": 0.282198,
+      "mean_signed_shap": 0.006159,
+      "percent": 8.936,
+      "rank": 5,
+      "direction_bias": "ortalamada riski artırıyor"
+    },
+    {
+      "feature": "savings_status",
+      "display_name": "Tasarruf hesabı durumu",
+      "mean_abs_shap": 0.257029,
+      "mean_signed_shap": -0.000955,
+      "percent": 8.139,
+      "rank": 6,
+      "direction_bias": "ortalamada riski azaltıyor"
+    },
+    {
+      "feature": "employment",
+      "display_name": "Mevcut işte çalışma süresi",
+      "mean_abs_shap": 0.179817,
+      "mean_signed_shap": -0.000443,
+      "percent": 5.694,
+      "rank": 7,
+      "direction_bias": "ortalamada riski azaltıyor"
+    },
+    {
+      "feature": "other_payment_plans",
+      "display_name": "Diğer taksit planları",
+      "mean_abs_shap": 0.176546,
+      "mean_signed_shap": 0.006106,
+      "percent": 5.59,
+      "rank": 8,
+      "direction_bias": "ortalamada riski artırıyor"
+    },
+    {
+      "feature": "installment_commitment",
+      "display_name": "Taksit yükü (gelire oran kademesi)",
+      "mean_abs_shap": 0.12374,
+      "mean_signed_shap": 0.001255,
+      "percent": 3.918,
+      "rank": 9,
+      "direction_bias": "ortalamada riski artırıyor"
+    },
+    {
+      "feature": "housing",
+      "display_name": "Konut durumu",
+      "mean_abs_shap": 0.114566,
+      "mean_signed_shap": -0.000493,
+      "percent": 3.628,
+      "rank": 10,
+      "direction_bias": "ortalamada riski azaltıyor"
+    },
+    {
+      "feature": "age",
+      "display_name": "Yaş",
+      "mean_abs_shap": 0.105171,
+      "mean_signed_shap": 0.010059,
+      "percent": 3.33,
+      "rank": 11,
+      "direction_bias": "ortalamada riski artırıyor"
+    },
+    {
+      "feature": "property_magnitude",
+      "display_name": "Sahip olunan en değerli varlık",
+      "mean_abs_shap": 0.098663,
+      "mean_signed_shap": -0.006567,
+      "percent": 3.124,
+      "rank": 12,
+      "direction_bias": "ortalamada riski azaltıyor"
+    },
+    {
+      "feature": "own_telephone",
+      "display_name": "Kayıtlı telefon hattı",
+      "mean_abs_shap": 0.080564,
+      "mean_signed_shap": -0.003606,
+      "percent": 2.551,
+      "rank": 13,
+      "direction_bias": "ortalamada riski azaltıyor"
+    },
+    {
+      "feature": "existing_credits",
+      "display_name": "Bu bankadaki mevcut kredi sayısı",
+      "mean_abs_shap": 0.046121,
+      "mean_signed_shap": 0.007771,
+      "percent": 1.46,
+      "rank": 14,
+      "direction_bias": "ortalamada riski artırıyor"
+    },
+    {
+      "feature": "residence_since",
+      "display_name": "Mevcut adreste ikamet süresi (kademe)",
+      "mean_abs_shap": 0.016661,
+      "mean_signed_shap": 0.00128,
+      "percent": 0.528,
+      "rank": 15,
+      "direction_bias": "ortalamada riski artırıyor"
+    },
+    {
+      "feature": "other_parties",
+      "display_name": "Diğer borçlu veya kefil",
+      "mean_abs_shap": 0.014635,
+      "mean_signed_shap": 4.2e-05,
+      "percent": 0.463,
+      "rank": 16,
+      "direction_bias": "ortalamada riski artırıyor"
+    },
+    {
+      "feature": "num_dependents",
+      "display_name": "Bakmakla yükümlü kişi sayısı",
+      "mean_abs_shap": 0.008929,
+      "mean_signed_shap": 0.000437,
+      "percent": 0.283,
+      "rank": 17,
+      "direction_bias": "ortalamada riski artırıyor"
+    },
+    {
+      "feature": "job",
+      "display_name": "Meslek ve nitelik düzeyi",
+      "mean_abs_shap": 0.0,
+      "mean_signed_shap": 0.0,
+      "percent": 0.0,
+      "rank": 18,
+      "direction_bias": "ortalamada riski azaltıyor"
+    }
+  ]
+}
