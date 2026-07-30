@@ -369,11 +369,31 @@ matematiksel olarak imkânsızdır (Kleinberg ve ark., 2016). Dürüst olan, far
 | **Yön çelişkisi** | SHAP "azaltıyor" derken metin "artırıyor" | Cümle düzeyinde işaret karşılaştırması (yeniden yazılmış adlara toleranslı) |
 | **Çerçeveleme hatası** | "Riski %13.7 oranında artırıyor" | Etki payı bir risk miktarı değildir |
 | **Korunan özellik gerekçesi** | "Kadın olmanız nedeniyle..." | Korunan terim + dışlama ipucu yokluğu |
+| **Dil kayması** | "Based on the provided tool response..." | İngilizce kelime sınırı taraması (≥4 farklı) |
 | **Eksik tool çağrısı** | Varsayımsal soruya tool çağırmadan cevap | Soru kalıbı + çağrı kaydı |
 
 Denetçinin kendisi de test edilir: `tests/test_faithfulness.py` her ihlal türü
 için **kasıtlı olarak bozuk** bir anlatı üretip yakalandığını doğrular. Her şeye
 "geçti" diyen bir denetçi işe yaramaz.
+
+#### Ölçülen sonuç: ana açıklamada 0 ihlal
+
+`uv run python scripts/explain_demo.py --borderline` çıktısından:
+
+```
+  [tool çağrıları: get_decision_explanation]
+  [onarım devreye girdi: 5 ihlal -> 0]
+
+  Karar: Onaylandı · Risk Oranı: %25.9 · Karar Eşiği: %26.0
+  Karar Netliği: KIL PAYI — küçük bir değişiklik sonucu değiştirebilir
+  ...
+  ✅ SADAKAT DENETİMİ GEÇTİ (32 sayı temellendirildi)
+```
+
+Ana açıklama sorusunda onarım döngüsü ihlalleri **tamamen sıfırlıyor** ve
+metindeki 32 sayının hepsi SHAP çıktısıyla eşleşiyor. Takip sorularında ise
+model hâlâ sayı uydurabiliyor (aynı koşuda 2–3 ihlal) — sistem bunu
+**gizlemiyor, ekranda gösteriyor.**
 
 ### Denetçiyi kalibre etmek: yanlış pozitif avı
 
@@ -388,6 +408,9 @@ denetçinin kendi hatasıydı. Üç kaynak bulundu ve düzeltildi:
 | "gelir uydurdu" alarmı | `installment_commitment` özelliğinin Türkçe adı **"Taksit yükü (gelire oran kademesi)"** ve içinde "gelir" geçiyor | `mask_known_vocabulary()` — modelin kendi sözlüğü metinden silindikten *sonra* uydurma kavram aranıyor |
 | "Başvuru kimliği A-046" → 46 temelsiz | Kimlik yükün içindeydi ama izinli sayı kümesine eklenmemişti | `allowed_numbers` kimliğin rakamlarını da içeriyor |
 | "%21.3 riski artırıyor" kaçıyordu | Regex yalnızca "riski %21.3 ... artırıyor" *sırasını* tanıyordu; model en sık sayıyı **önce** yazıyor | `_MISFRAME_RE`'ye üçüncü alternatif eklendi |
+| "hata 4.4e-16" → `4.4` ve `16` temelsiz | Bilimsel gösterim iki sayıya bölünüyordu; oysa yükte **aynen** yazılı | Genel kural: ajana gösterilen yükün içindeki **her** sayı meşru (özel durum listesi yerine) |
+| "cinsiyetiniz etki etmiyor" ihlal sayıldı | Dışlama ipuçları yalnızca geçmiş zaman tanıyordu ("etki etmedi") | Geniş zaman ve edilgen olumsuzluk biçimleri eklendi |
+| `**Impact Share:**` dil taramasından kaçtı | Boşlukla çevrili alt-dizi arıyordu; markdown yıldızı `impact`'i yapıştırıyor | Kelime sınırı regex'ine geçildi |
 
 Bu düzeltmelerden sonra yön çelişkileri **25 → 2**'ye indi. Her düzeltme bir
 regresyon testiyle sabitlendi — aksi hâlde denetçiyi gevşetmek onu işe yaramaz
@@ -492,7 +515,38 @@ yeni bir döngü açıyorduk.
 coroutine'ler `run_coroutine_threadsafe` ile gönderiliyor. Streamlit'in senkron
 modeliyle de sorunsuz çalışıyor.
 
-### 8. Kurulum tuzakları: `libomp` ve `llvmlite`
+### 8. Ajan tool çağırmadığında BAŞKA bir başvuruyu anlatıyor
+
+Demoyu ham (denetimsiz) modda koşarken en ağır halüsinasyon ortaya çıktı.
+Ajan hiç tool çağırmadı ve şunu yazdı:
+
+```
+Risk oranı %12 ... eşik %30
+- Kredi Miktari: 6500 — kararın %47'ini oluşturuyor
+- Kredi Tarihi: "neu" — kararın %30'unu oluşturuyor
+```
+
+Gerçek başvuru: risk %25.9, eşik %26.0, tutar 3612 DM, yaş 37. Model,
+eğitim verisinden hatırladığı **bambaşka bir German Credit kaydını** anlattı —
+`"neu"` Almanca, veri setinin orijinal kodlamasından geliyor.
+
+Denetçi 8 sayının tamamını yakaladı. Onarım mesajı artık kök sebebi en başa
+koyuyor: *"HİÇ TOOL ÇAĞIRMADIN. Bu yüzden yazdığın sayılar bu başvuruya ait
+değil; başka bir başvuruyu anlatıyorsun."* Bu düzeltmeyle aynı soru
+**5 ihlal → 0** oldu.
+
+### 9. Onarım turundan sonra model İngilizce'ye kayıyor
+
+Düzeltme mesajını uyguladıktan sonra 7B model dili değiştirdi ve tool
+çıktısını alan-alan dökmeye başladı (`**Feature:** ... **Impact Share:** ...`).
+Sistem promptu Türkçe istiyordu ama model **son mesaja** ağırlık veriyor.
+
+İki katmanlı çözüm: (a) sistem promptunun en başına mutlak dil kuralı,
+(b) onarım mesajında dil ve biçim talimatının tekrarı, (c) denetçiye
+`language_drift` kontrolü — İngilizce yanıt teknik olarak "sadık" olsa bile
+Türkçe konuşan bir başvuru sahibi için kullanılamaz.
+
+### 10. Kurulum tuzakları: `libomp` ve `llvmlite`
 
 macOS'ta LightGBM `libomp` olmadan **import edilir ama eğitimde patlar**.
 `test_lightgbm_openmp_works` gerçek bir eğitim koşturarak bunu yakalıyor.

@@ -20,6 +20,19 @@ ikinci hattır.
 from __future__ import annotations
 
 SYSTEM_PROMPT = """\
+## DİL — HER ŞEYDEN ÖNCE BU
+
+Yanıtın TAMAMI TÜRKÇE olacak. Tek kelime İngilizce kullanmayacaksın.
+Tool çıktısı sana JSON olarak gelir; onu ÖZETLEMEYECEKSİN, alan adlarını
+("Feature", "Value", "Impact Share", "Decision" gibi) ASLA yazmayacaksın.
+Başvuru sahibinin okuyacağı akıcı Türkçe cümleler kuracaksın.
+
+    ❌ "Based on the provided tool response, here is a summary..."
+    ❌ "**Feature:** Vadesiz hesap durumu / **Impact Share:** 16.4%"
+    ✅ "Başvuru onaylandı. Model risk oranını %25.9 olarak hesapladı..."
+    ✅ "- **Vadesiz hesap durumu**: bakiye 0–200 DM arası — kararın
+         %16.4'ünü oluşturuyor (güçlü etki)"
+
 Sen bir bankanın kredi kararı açıklama asistanısın. Görevin, bir makine
 öğrenmesi modelinin verdiği kredi kararını başvuru sahibine ANLAŞILIR
 TÜRKÇE ile açıklamak.
@@ -185,9 +198,16 @@ def build_repair_prompt(audit: object) -> str:
             f"- '{number}' sayısı tool çıktısında YOK. Bu sayıyı sil veya "
             "tool'dan gelen doğru sayıyla değiştir."
         )
+    contexts = {
+        c["concept"]: c["sentence"]
+        for c in getattr(audit, "fabricated_contexts", [])
+    }
     for concept in getattr(audit, "fabricated_concepts", []):
+        where = contexts.get(concept)
+        quote = f' Şu cümlede geçiyor: "{where}".' if where else ""
         problems.append(
-            f"- '{concept}' diye bir bilgi modelde YOK. Bu ifadeyi tamamen çıkar."
+            f"- '{concept}' diye bir bilgi modelde YOK.{quote} "
+            "Bu ifadeyi tamamen çıkar."
         )
     for conflict in getattr(audit, "direction_conflicts", []):
         truth = (
@@ -210,14 +230,36 @@ def build_repair_prompt(audit: object) -> str:
             f"- Şu cümlede korunan özellik üzerinden gerekçe sunuyorsun: "
             f"\"{sentence}\". Bu model cinsiyet/uyruk kullanmıyor; cümleyi çıkar."
         )
+    if getattr(audit, "language_drift", False):
+        problems.append(
+            "- Yanıtın İngilizce'ye kaydı. Başvuru sahibi Türkçe konuşuyor; "
+            "tamamını TÜRKÇE yeniden yaz."
+        )
     if getattr(audit, "missing_tool_call", False):
         problems.append(
             "- Varsayımsal bir soruya tool çağırmadan cevap verdin. "
             "ŞİMDİ run_what_if tool'unu çağır ve gerçek sonucu kullan."
         )
 
+    # İhlal yoksa onarım istemeyiz — tool çağrılıp çağrılmaması da önemsizdir.
+    # (Ajan önceki turun tool sonucunu bağlamdan doğru biçimde kullanmış
+    # olabilir; sayılar temellendiyse sorun yok.)
     if not problems:
         return ""
+
+    # İhlal VARSA ve hiç tool çağrılmamışsa, bunu en başa koy: kök sebep bu.
+    # Ölçümde gözlendi — ajan tool çağırmayınca eğitim verisinden hatırladığı
+    # BAŞKA bir başvuruyu anlatmaya başladı ("Kredi Tarihi: neu", "Yaş: 28";
+    # hiçbiri bu başvuruya ait değildi). Diğer düzeltmeleri söylemek anlamsız,
+    # çünkü elinde doğru veri hiç yok.
+    if not getattr(audit, "used_tools", None):
+        problems.insert(
+            0,
+            "- HİÇ TOOL ÇAĞIRMADIN. Bu yüzden yazdığın sayılar bu başvuruya "
+            "ait değil; başka bir başvuruyu anlatıyorsun. ŞİMDİ "
+            "get_decision_explanation tool'unu çağır ve YALNIZCA onun "
+            "döndürdüğü verilerle yeniden yaz.",
+        )
 
     return (
         "DUR. Yanıtın otomatik sadakat denetiminden geçemedi. Bulunan "
@@ -225,7 +267,18 @@ def build_repair_prompt(audit: object) -> str:
         + "\n".join(problems)
         + "\n\nŞimdi yanıtını BAŞTAN yaz. Yalnızca düzeltilmiş metni ver; "
         "özür dileme, açıklama yapma, bu listeden bahsetme. Gerekiyorsa "
-        "tool'ları yeniden çağır."
+        "tool'ları yeniden çağır.\n\n"
+        # Aşağıdaki iki hatırlatma ölçümden doğdu: düzeltme mesajından sonra
+        # 7B model (a) İngilizce'ye kayıyor, (b) tool çıktısını "Feature: ...
+        # / Value: ... / Impact Share: ..." biçiminde alan-alan döküyor.
+        # Sistem promptu bunları söylüyor ama düzeltme turunda tekrarlanması
+        # şart — model son mesaja ağırlık veriyor.
+        "ZORUNLU BİÇİM HATIRLATMASI:\n"
+        "- TÜRKÇE yaz. Tek kelime İngilizce kullanma.\n"
+        "- Tool çıktısını alan-alan listeleme ('Feature:', 'Value:', "
+        "'Impact Share:' gibi). Başvuru sahibinin okuyacağı akıcı cümleler kur.\n"
+        "- Madde biçimi şu olacak: "
+        "- **{özellik adı}**: {değer} — kararın %{pay}'ini oluşturuyor"
     )
 
 

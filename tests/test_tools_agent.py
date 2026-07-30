@@ -239,6 +239,7 @@ def test_repair_prompt_lists_every_violation_type() -> None:
     from xai_agent.prompts import build_repair_prompt
 
     class FakeAudit:
+        used_tools = ["get_decision_explanation"]
         ungrounded_numbers = [99.7]
         fabricated_concepts = ["gelir"]
         direction_conflicts = [
@@ -259,11 +260,39 @@ def test_repair_prompt_lists_every_violation_type() -> None:
     assert "BAŞTAN yaz" in message
 
 
+def test_repair_prompt_leads_with_missing_tool_call() -> None:
+    """Hiç tool çağrılmamışsa kök sebep en başa yazılmalı.
+
+    Ölçümde gözlenen en ağır hata: ajan tool çağırmadan cevap verdiğinde
+    eğitim verisinden hatırladığı BAŞKA bir başvuruyu anlatmaya başlıyor
+    ("Kredi Tarihi: neu", "Yaş: 28"). Bu durumda tek tek sayı düzeltmesi
+    istemek anlamsız — önce tool çağırması gerekiyor.
+    """
+    from xai_agent.prompts import build_repair_prompt
+
+    class NoToolAudit:
+        used_tools: list = []
+        ungrounded_numbers = [12.0, 6500.0]
+        fabricated_concepts: list = []
+        direction_conflicts: list = []
+        misframed_shares: list = []
+        protected_violations: list = []
+        missing_tool_call = False
+
+    message = build_repair_prompt(NoToolAudit())
+    first_line = message.splitlines()[2]
+    assert "HİÇ TOOL ÇAĞIRMADIN" in first_line, (
+        f"kök sebep en başta olmalı, bulunan: {first_line!r}"
+    )
+    assert "get_decision_explanation" in message
+
+
 def test_repair_prompt_empty_when_clean() -> None:
     """İhlal yoksa onarım mesajı üretilmemeli (gereksiz LLM çağrısı olmasın)."""
     from xai_agent.prompts import build_repair_prompt
 
     class CleanAudit:
+        used_tools: list = []  # tool çağrılmamış olsa da ihlal yoksa onarım istemeyiz
         ungrounded_numbers: list = []
         fabricated_concepts: list = []
         direction_conflicts: list = []

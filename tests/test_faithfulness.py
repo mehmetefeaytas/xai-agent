@@ -312,6 +312,59 @@ def test_real_risk_rate_framing_passes(sample_explanation) -> None:
     assert not audit.misframed_shares
 
 
+def test_detects_language_drift(sample_explanation) -> None:
+    """İngilizce'ye kayan yanıt ihlal sayılmalı.
+
+    Ölçülmüş davranış: onarım turundan sonra 7B model İngilizce'ye kayıp tool
+    çıktısını "Feature: ... / Impact Share: ..." biçiminde döktü. Sayılar
+    doğruydu ama ürün Türkçe konuşan bir başvuru sahibine hitap ediyor;
+    İngilizce bir yanıt teknik olarak sadık olsa bile kullanılamaz.
+    """
+    audit = _audit(
+        "Based on the provided tool response: Decision: Approved. "
+        "Feature: Vadesiz hesap durumu, Value: bakiye, Impact Share: 16.4%",
+        sample_explanation,
+    )
+    assert audit.language_drift
+
+
+def test_turkish_answer_has_no_language_drift(sample_explanation) -> None:
+    e = sample_explanation
+    c = e.all_contributions[0]
+    audit = _audit(
+        f"Başvuru {e.decision}. Model risk oranını "
+        f"%{e.risk_probability * 100:.1f} olarak hesapladı. "
+        f"{c.display_name}, kararın %{c.share_of_total:.1f}'ini oluşturuyor.",
+        e,
+    )
+    assert not audit.language_drift
+    assert audit.passed, audit.to_dict()
+
+
+def test_repair_prompt_asks_for_turkish_and_prose() -> None:
+    """Onarım mesajı dil ve biçim talimatını tekrar etmeli.
+
+    Sistem promptu Türkçe istiyor ama 7B model son mesaja ağırlık veriyor;
+    düzeltme turunda hatırlatılmazsa İngilizce'ye ve alan-listesi biçimine
+    kayıyor. Ölçümde gözlendi.
+    """
+    from xai_agent.prompts import build_repair_prompt
+
+    class Audit:
+        used_tools = ["get_decision_explanation"]
+        ungrounded_numbers = [99.7]
+        fabricated_concepts: list = []
+        direction_conflicts: list = []
+        misframed_shares: list = []
+        protected_violations: list = []
+        language_drift = False
+        missing_tool_call = False
+
+    message = build_repair_prompt(Audit())
+    assert "TÜRKÇE yaz" in message
+    assert "alan-alan listeleme" in message
+
+
 def test_detects_protected_attribute_reasoning(sample_explanation) -> None:
     audit = _audit(
         "Kadın olmanız nedeniyle riskiniz yüksek değerlendirildi.",

@@ -22,7 +22,6 @@ import numpy as np  # noqa: E402
 
 from xai_agent.data import prepare  # noqa: E402
 from xai_agent.explainer import CreditExplainer  # noqa: E402
-from xai_agent.faithfulness import audit_narrative  # noqa: E402
 
 FOLLOW_UP_QUESTIONS = [
     "Kredi vadesi 12 aya düşse karar değişir miydi?",
@@ -47,6 +46,14 @@ def main() -> int:
         help="Karar eşiğine en yakın (kıl payı) başvuruyu seç",
     )
     parser.add_argument("--no-llm", action="store_true", help="Ajan katmanını atla")
+    parser.add_argument(
+        "--raw",
+        action="store_true",
+        help=(
+            "Onarım döngüsünü KAPAT. Ajanın denetlenmemiş ham çıktısını gösterir; "
+            "ihlallerin ne kadar gerçek olduğunu görmek için kullanışlıdır."
+        ),
+    )
     parser.add_argument(
         "--json", action="store_true", help="Ajana giden yükü JSON olarak yazdır"
     )
@@ -119,20 +126,32 @@ def main() -> int:
 
     agent.set_applicant(row, applicant_id)
 
+    mode = "HAM (denetimsiz)" if args.raw else "DENETİMLİ (onarım döngüsü açık)"
+    print(f"  Mod       : {mode}")
+
     questions = ["Bu başvurunun sonucunu ve nedenlerini açıkla."] + FOLLOW_UP_QUESTIONS
     for question in questions:
         _rule(f"SORU: {question}", char="-")
-        turn = agent.ask_turn(question)
-        print(f"  [tool çağrıları: {', '.join(turn.tool_names) or 'YOK'}]\n")
+        if args.raw:
+            turn = agent.ask_turn(question)
+            audit = agent.audit_turn(turn)
+            repair_info = ""
+        else:
+            verified = agent.ask_verified(question, max_repairs=1)
+            turn, audit = verified.turn, verified.audit
+            repair_info = (
+                f"  [onarım devreye girdi: "
+                f"{verified.first_attempt_violations} ihlal -> {audit.violations}]\n"
+                if verified.was_repaired
+                else ""
+            )
+
+        print(f"  [tool çağrıları: {', '.join(turn.tool_names) or 'YOK'}]")
+        if repair_info:
+            print(repair_info, end="")
+        print()
         for line in turn.answer.splitlines():
             print(f"  {line}")
-
-        audit = audit_narrative(
-            turn.answer,
-            explanation,
-            question=question,
-            used_tools=turn.tool_names,
-        )
         print()
         if audit.passed:
             print(f"  ✅ SADAKAT DENETİMİ GEÇTİ "

@@ -36,6 +36,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 import re
 import unicodedata
@@ -244,6 +245,24 @@ FABRICATED_CONCEPTS = (
     "vergi levhası",
 )
 
+#: İngilizce'ye kayma göstergeleri. Ürün Türkçe konuşan bir başvuru sahibine
+#: hitap ediyor; İngilizce bir yanıt teknik olarak "sadık" olsa bile
+#: kullanılamaz. Ölçümde gözlendi: onarım turundan sonra 7B model İngilizce'ye
+#: kayıp tool çıktısını "Feature: ... / Impact Share: ..." diye döktü.
+ENGLISH_MARKERS: tuple[str, ...] = (
+    "the", "and", "for", "with", "this", "that", "from", "based",
+    "impact", "decision", "threshold", "feature", "value", "share",
+    "summary", "increases", "decreases", "approved", "rejected",
+    "application", "outcome", "factors", "power", "direction",
+)
+
+#: Kelime sınırıyla ara. Boşlukla çevrili alt-dizi aramak yetmiyordu:
+#: model "**Impact Share:**" yazdığında "impact" bir yıldıza yapışıyor ve
+#: " impact " kalıbı tutmuyordu — ölçülmüş bir kaçak.
+_ENGLISH_RE = re.compile(
+    r"\b(?:" + "|".join(ENGLISH_MARKERS) + r")\b", re.IGNORECASE
+)
+
 #: Korunan özelliklere işaret eden ifadeler.
 PROTECTED_TERMS = (
     "cinsiyet",
@@ -259,19 +278,32 @@ PROTECTED_TERMS = (
 )
 
 #: Korunan bir terim geçtiğinde ihlal saymamak için aranan "dışlama" ipuçları.
+#: Not: geniş zaman ("etki etmiyor") ve edilgen olumsuzluk
+#: ("yola çıkılmadığı") biçimleri ölçümden sonra eklendi. Ajan doğru
+#: davranıp "cinsiyetiniz bu karara etki etmiyor" dediğinde denetçi bunu
+#: ihlal sayıyordu — yalnızca geçmiş zaman ("etki etmedi") tanınıyordu.
 EXCLUSION_CUES = (
     "kullanmıyor",
     "kullanılmıyor",
     "kullanılmadı",
     "kullanmadı",
+    "kullanmaz",
     "etki etmedi",
+    "etki etmiyor",
+    "etkilemiyor",
+    "etkilemedi",
     "etkisi yok",
+    "etkisi bulunma",
     "çıkarıl",
     "dışlan",
     "dahil edilme",
     "hesaba katılma",
+    "yola çıkılma",
+    "dikkate alınma",
     "görmüyor",
     "görmedi",
+    "bilgi elimizde yok",
+    "böyle bir bilgi yok",
 )
 
 
@@ -513,6 +545,19 @@ def allowed_numbers(
             allowed.update(_extract_numbers(ch.old_value))
             allowed.update(_extract_numbers(ch.new_value))
 
+    # GENEL KURAL: ajana gösterilen yükün içinde geçen HER sayı meşrudur.
+    # Bu, tek tek özel durum eklemekten (kimlik, kapsam, toplanabilirlik
+    # hatası, değer etiketleri...) daha sağlam. Ölçülmüş kaçak: yük
+    # "(hata 4.4e-16)" metnini taşıyor, ajan bunu aktardı ve denetçi
+    # bilimsel gösterimi "4.4" ile "16" diye ikiye bölüp ikisini de
+    # temellenmemiş saydı.
+    with contextlib.suppress(TypeError, ValueError):
+        allowed.update(
+            _extract_numbers(
+                json.dumps(explanation.to_agent_payload(), ensure_ascii=False)
+            )
+        )
+
     # Sıra numaraları ve küçük tam sayılar (madde numaralandırması) meşru
     allowed.update(float(i) for i in range(1, 11))
     return allowed
@@ -527,9 +572,12 @@ class NarrativeAudit:
     used_tools: list[str] = field(default_factory=list)
     ungrounded_numbers: list[float] = field(default_factory=list)
     fabricated_concepts: list[str] = field(default_factory=list)
+    #: Uydurma kavramın hangi cümlede bulunduğu — teşhis ve onarım mesajı için.
+    fabricated_contexts: list[dict[str, str]] = field(default_factory=list)
     direction_conflicts: list[dict[str, str]] = field(default_factory=list)
     protected_violations: list[str] = field(default_factory=list)
     misframed_shares: list[dict[str, str]] = field(default_factory=list)
+    language_drift: bool = False
     missing_tool_call: bool = False
     grounded_number_count: int = 0
 
@@ -541,6 +589,7 @@ class NarrativeAudit:
             + len(self.direction_conflicts)
             + len(self.protected_violations)
             + len(self.misframed_shares)
+            + (1 if self.language_drift else 0)
             + (1 if self.missing_tool_call else 0)
         )
 
@@ -557,9 +606,11 @@ class NarrativeAudit:
             "grounded_number_count": self.grounded_number_count,
             "ungrounded_numbers": self.ungrounded_numbers,
             "fabricated_concepts": self.fabricated_concepts,
+            "fabricated_contexts": self.fabricated_contexts,
             "direction_conflicts": self.direction_conflicts,
             "protected_violations": self.protected_violations,
             "misframed_shares": self.misframed_shares,
+            "language_drift": self.language_drift,
             "missing_tool_call": self.missing_tool_call,
             "answer_excerpt": self.answer[:400],
         }
@@ -606,8 +657,20 @@ def audit_narrative(
     # 2) Uydurulmuş kavramlar — modelin kendi sözlüğü maskelendikten SONRA
     masked = mask_known_vocabulary(folded, explanation)
     for concept in FABRICATED_CONCEPTS:
-        if _fold(concept) in masked:
-            audit.fabricated_concepts.append(concept)
+        folded_concept = _fold(concept)
+        if folded_concept not in masked:
+            continue
+        audit.fabricated_concepts.append(concept)
+        # Hangi cümlede geçtiğini bul — "nerede?" sorusu cevaplanabilir olmalı,
+        # yoksa ne teşhis edilebilir ne de ajana anlamlı düzeltme verilebilir.
+        context = ""
+        for sentence in _split_sentences(answer):
+            if folded_concept in mask_known_vocabulary(_fold(sentence), explanation):
+                context = sentence.strip()[:160]
+                break
+        audit.fabricated_contexts.append(
+            {"concept": concept, "sentence": context or "(cümle bulunamadı)"}
+        )
 
     # 3) Yön çelişkileri — cümle düzeyinde, cümle başına EN İYİ eşleşen özellik
     increase_cues = ("artir", "artti", "olumsuz", "aleyhine", "yukselt")
@@ -684,7 +747,12 @@ def audit_narrative(
             continue  # doğru kullanım: "bu model cinsiyeti kullanmıyor"
         audit.protected_violations.append(sentence.strip()[:160])
 
-    # 6) Varsayımsal soruda tool çağrısı zorunlu
+    # 6) Dil kayması — Türkçe konuşan kullanıcıya İngilizce yanıt kullanılamaz
+    english_words = {m.group(0).lower() for m in _ENGLISH_RE.finditer(folded)}
+    if len(english_words) >= 4:
+        audit.language_drift = True
+
+    # 7) Varsayımsal soruda tool çağrısı zorunlu
     q = _fold(question)
     if any(cue in q for cue in _HYPOTHETICAL_CUES) and (
         "run_what_if" not in audit.used_tools
@@ -732,6 +800,7 @@ class NarrativeFaithfulnessReport:
                 len(a.protected_violations) for a in self.audits
             ),
             "misframed_shares": sum(len(a.misframed_shares) for a in self.audits),
+            "language_drift": sum(1 for a in self.audits if a.language_drift),
             "missing_tool_calls": sum(1 for a in self.audits if a.missing_tool_call),
         }
         return {
